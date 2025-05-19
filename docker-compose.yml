@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: lauer_backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "3001:5150"
+    command: cargo watch -x "loco start"
+    environment:
+      - RUST_LOG=debug
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: lauer_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: bun run dev -- --host
