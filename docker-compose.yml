@@ -10,6 +10,8 @@ services:
     command: cargo watch -x "loco start"
     environment:
       - RUST_LOG=debug
+    env_file:
+      - .env
 
   frontend:
     build:

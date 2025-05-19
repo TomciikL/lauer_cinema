@@ -24,6 +24,8 @@ axum = { version = "0.8.1" }
 tracing = { version = "0.1.40" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 regex = { version = "1.11.1" }
+reqwest = "0.12.15"
+dotenvy = "0.15.7"
 
 [[bin]]
 name = "backend-cli"
