@@ -4,4 +4,17 @@
 	let { children } = $props();
 </script>
 
-{@render children()}
+<nav class="border-b border-gray-300 bg-gray-100">
+	<div class="flex items-center justify-center px-4">
+		<a href="/" class="font-bold text-blue-600 hover:text-blue-800">LC</a>
+		<div
+			class="container mx-auto flex justify-center gap-6 px-4 py-3 text-base font-medium text-gray-700"
+		>
+			<a href="/movies" class="transition-colors hover:text-black">Filmy</a>
+			<a href="/tv" class="transition-colors hover:text-black">Seriály</a>
+		</div>
+	</div>
+</nav>
+<div class="container mx-auto">
+	{@render children()}
+</div>

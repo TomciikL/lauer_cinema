@@ -56,8 +56,28 @@
 		<ul class="mt-6 space-y-4">
 			{#each $results as movie (movie.id)}
 				<li class="rounded-xl border bg-white p-4 shadow">
-					<h2 class="text-lg font-semibold">{movie.title}</h2>
-					<p class="text-sm text-gray-600">{movie.overview}</p>
+					<div class="flex flex-row gap-4">
+						<!-- Poster -->
+						<img
+							src={movie.poster_url}
+							alt="Poster {movie.title}"
+							class="h-32 w-20 rounded object-cover"
+							loading="lazy"
+						/>
+
+						<!-- Textový obsah -->
+						<div class="flex-1">
+							<div class="mb-2 flex flex-col sm:flex-row sm:items-start sm:justify-between">
+								<h2 class="text-lg font-semibold">
+									{movie.title} ({new Date(movie.release_date).getFullYear()})
+								</h2>
+								<p class="text-sm text-gray-500 sm:text-right">
+									{movie.genres.map((genre) => genre).join(', ')}
+								</p>
+							</div>
+							<p class="text-sm text-gray-600">{movie.overview}</p>
+						</div>
+					</div>
 				</li>
 			{/each}
 		</ul>
