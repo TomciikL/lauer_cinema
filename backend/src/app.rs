@@ -44,6 +44,7 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
+            .add_route(controllers::detail::routes())
             .add_route(controllers::search::routes())
             .add_route(controllers::home::routes())
     }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import '../app.css';
 
 	let { children } = $props();
@@ -10,11 +11,26 @@
 		<div
 			class="container mx-auto flex justify-center gap-6 px-4 py-3 text-base font-medium text-gray-700"
 		>
-			<a href="/movies" class="transition-colors hover:text-black">Filmy</a>
-			<a href="/tv" class="transition-colors hover:text-black">Seriály</a>
+			<a
+				href="/movies"
+				class="transition-colors hover:text-black {$page.url.pathname.startsWith('/movies')
+					? 'font-semibold text-blue-600'
+					: ''}"
+			>
+				Filmy
+			</a>
+			<a
+				href="/tv"
+				class="transition-colors hover:text-black {$page.url.pathname.startsWith('/tv')
+					? 'font-semibold text-blue-600'
+					: ''}"
+			>
+				Seriály
+			</a>
 		</div>
 	</div>
 </nav>
+
 <div class="container mx-auto">
 	{@render children()}
 </div>

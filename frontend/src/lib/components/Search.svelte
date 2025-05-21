@@ -1,85 +1,69 @@
 <script lang="ts">
 	import { writable } from 'svelte/store';
+	import { goto } from '$app/navigation';
 
-	let query = '';
-	let results = writable([]);
-	let loading = writable(false);
-	let error = writable('');
+	export let type: 'movie' | 'tv' = 'movie';
 
-	async function searchMovies() {
-		if (!query.trim()) return;
-		loading.set(true);
-		error.set('');
-		try {
-			const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
-			if (!res.ok) throw new Error(`Chyba: ${res.status}`);
-			const data = await res.json();
-			results.set(data);
-		} catch (err) {
-			error.set(err instanceof Error ? err.message : 'Neznámá chyba');
-			results.set([]);
-		} finally {
-			loading.set(false);
+	const query = writable('');
+	const results = writable([]);
+
+	async function search() {
+		const q = $query.trim();
+		if (!q) return;
+
+		const res = await fetch(`/api/search?query=${encodeURIComponent(q)}&media_type=${type}`);
+		if (!res.ok) {
+			console.error(await res.text());
+			return;
 		}
+		results.set(await res.json());
 	}
 
-	function handleEnter(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			searchMovies();
-		}
+	function goToDetail(id: number) {
+		goto(`/detail/${type}/${id}`);
 	}
 </script>
 
-<div class="mx-auto w-full max-w-2xl p-4">
-	<div class="flex gap-2">
+<div class="mx-auto max-w-2xl space-y-4 p-4">
+	<div class="flex space-x-2">
 		<input
-			class="w-full rounded-2xl border border-gray-300 px-4 py-2 text-base shadow-sm focus:border-blue-500 focus:ring focus:outline-none"
-			placeholder="Hledat film..."
-			bind:value={query}
-			on:keydown={handleEnter}
+			type="text"
+			bind:value={$query}
+			placeholder="Hledat..."
+			class="w-full rounded-lg border px-4 py-2"
+			on:keydown={(e) => e.key === 'Enter' && search()}
 		/>
-		<button
-			class="rounded-2xl bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-			on:click={searchMovies}
-		>
-			Hledat
-		</button>
+		<button on:click={search} class="rounded-lg bg-blue-600 px-4 py-2 text-white">Hledat</button>
 	</div>
 
-	{#if $loading}
-		<p class="mt-4 text-gray-600">Načítání…</p>
-	{:else if $error}
-		<p class="mt-4 text-red-600">{$error}</p>
-	{:else if $results.length === 0 && query}
-		<p class="mt-4 text-gray-500">Žádné výsledky</p>
-	{:else}
-		<ul class="mt-6 space-y-4">
-			{#each $results as movie (movie.id)}
-				<li class="rounded-xl border bg-white p-4 shadow">
-					<div class="flex flex-row gap-4">
-						<!-- Poster -->
-						<img
-							src={movie.poster_url}
-							alt="Poster {movie.title}"
-							class="h-32 w-20 rounded object-cover"
-							loading="lazy"
-						/>
+	{#if $results.length > 0}
+		<ul class="space-y-4">
+			{#each $results as item (item.id)}
+				<li
+					class="flex cursor-pointer space-x-4 rounded-lg border p-4 transition hover:bg-gray-50"
+					on:click={() => goToDetail(item.id)}
+				>
+					{#if item.poster_url}
+						<img src={item.poster_url} alt={item.title} class="h-36 w-24 rounded object-cover" />
+					{/if}
 
-						<!-- Textový obsah -->
-						<div class="flex-1">
-							<div class="mb-2 flex flex-col sm:flex-row sm:items-start sm:justify-between">
-								<h2 class="text-lg font-semibold">
-									{movie.title} ({new Date(movie.release_date).getFullYear()})
-								</h2>
-								<p class="text-sm text-gray-500 sm:text-right">
-									{movie.genres.map((genre) => genre).join(', ')}
-								</p>
-							</div>
-							<p class="text-sm text-gray-600">{movie.overview}</p>
+					<div class="flex-1">
+						<div
+							class="mb-2 flex flex-col items-baseline sm:flex-row sm:items-baseline sm:justify-between"
+						>
+							<h2 class="text-lg font-semibold">
+								{item.title} ({new Date(item.release_date).getFullYear()})
+							</h2>
+							<p class="text-sm text-gray-500 sm:text-right">
+								{item.genres.join(', ')}
+							</p>
 						</div>
+						<p class="text-sm text-gray-600">{item.overview}</p>
 					</div>
 				</li>
 			{/each}
 		</ul>
+	{:else}
+		<p class="text-center text-gray-500">Zadejte hledaný výraz.</p>
 	{/if}
 </div>

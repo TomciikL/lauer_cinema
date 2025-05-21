@@ -1,15 +1,22 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
+
 use axum::{extract::Query, Json};
 use loco_rs::{controller::middleware::secure_headers, prelude::*};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{collections::HashMap, env};
 
 #[derive(Deserialize)]
 pub struct SearchParams {
     pub query: String,
+    #[serde(default = "default_media_type")]
+    pub media_type: String, // "movie" nebo "tv"
+}
+
+fn default_media_type() -> String {
+    "movie".to_string()
 }
 
 #[derive(Serialize)]
@@ -36,12 +43,18 @@ struct GenreResponse {
 pub async fn search(Query(params): Query<SearchParams>) -> Result<Json<Vec<Movie>>> {
     let api_key = env::var("TMDB_API_KEY").expect("Missing TMDB_API_KEY");
     let client = Client::new();
-    tracing::info!("Hledám film: {}", params.query);
 
-    // Získání mapy ID -> jméno žánru
+    let is_tv = params.media_type == "tv";
+    tracing::info!(
+        "Hledám {}: {}",
+        if is_tv { "seriál" } else { "film" },
+        params.query
+    );
+
+    // Získání žánrů (film vs tv)
     let genre_url = format!(
-        "https://api.themoviedb.org/3/genre/movie/list?api_key={}&language=cs-CZ",
-        api_key
+        "https://api.themoviedb.org/3/genre/{}/list?api_key={}&language=cs-CZ",
+        params.media_type, api_key
     );
     let genre_res = client
         .get(&genre_url)
@@ -49,16 +62,18 @@ pub async fn search(Query(params): Query<SearchParams>) -> Result<Json<Vec<Movie
         .await?
         .json::<GenreResponse>()
         .await?;
-    let genre_map: std::collections::HashMap<u32, String> = genre_res
+    let genre_map: HashMap<u32, String> = genre_res
         .genres
         .into_iter()
         .map(|g| (g.id, g.name))
         .collect();
 
-    // Hledání filmů
+    // Hledání podle typu
     let search_url = format!(
-        "https://api.themoviedb.org/3/search/movie?api_key={}&query={}&include_adult=false&language=cs-CZ",
-        api_key, params.query
+        "https://api.themoviedb.org/3/search/{}?api_key={}&query={}&include_adult=false&language=cs-CZ",
+        params.media_type,
+        api_key,
+        params.query
     );
     let search_res = client
         .get(&search_url)
@@ -67,12 +82,12 @@ pub async fn search(Query(params): Query<SearchParams>) -> Result<Json<Vec<Movie
         .json::<serde_json::Value>()
         .await?;
 
-    let movies = search_res["results"]
+    let results = search_res["results"]
         .as_array()
         .unwrap_or(&vec![])
         .iter()
-        .map(|m| {
-            let genre_ids = m["genre_ids"]
+        .map(|item| {
+            let genre_ids = item["genre_ids"]
                 .as_array()
                 .unwrap_or(&vec![])
                 .iter()
@@ -81,12 +96,20 @@ pub async fn search(Query(params): Query<SearchParams>) -> Result<Json<Vec<Movie
                 .collect::<Vec<_>>();
 
             Movie {
-                id: m["id"].as_u64().unwrap_or(0) as u32,
-                title: m["title"].as_str().unwrap_or("").to_string(),
-                overview: m["overview"].as_str().unwrap_or("").to_string(),
-                release_date: m["release_date"].as_str().unwrap_or("").to_string(),
+                id: item["id"].as_u64().unwrap_or(0) as u32,
+                title: item["title"]
+                    .as_str()
+                    .or_else(|| item["name"].as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                overview: item["overview"].as_str().unwrap_or("").to_string(),
+                release_date: item["release_date"]
+                    .as_str()
+                    .or_else(|| item["first_air_date"].as_str())
+                    .unwrap_or("")
+                    .to_string(),
                 genres: genre_ids,
-                poster_url: m["poster_path"]
+                poster_url: item["poster_path"]
                     .as_str()
                     .map(|p| format!("https://image.tmdb.org/t/p/w500{}", p))
                     .unwrap_or_default(),
@@ -94,7 +117,7 @@ pub async fn search(Query(params): Query<SearchParams>) -> Result<Json<Vec<Movie
         })
         .collect::<Vec<_>>();
 
-    Ok(Json(movies))
+    Ok(Json(results))
 }
 
 pub fn routes() -> Routes {
